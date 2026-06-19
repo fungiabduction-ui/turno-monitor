@@ -1,0 +1,31 @@
+name: Test Email
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pyyaml requests
+      - run: |
+          python -c "
+          import yaml
+          from notify import notify_turno
+          with open('config.yaml') as f:
+              config = yaml.safe_load(f)
+          turno = {
+              'especialidad': 'Endocrinología',
+              'medico': 'TEST desde GitHub Actions',
+              'fecha': 'Prueba CI',
+              'hora': '00:00hs',
+              'sucursal': 'DIM ONCE',
+              'direccion': 'Av. Rivadavia 2198',
+          }
+          notify_turno(turno, config, '${{ secrets.GMAIL_APP_PASSWORD }}', '')
+          print('Email enviado OK')
+          "
