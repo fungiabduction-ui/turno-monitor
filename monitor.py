@@ -65,51 +65,29 @@ def get_available_turnos(page, especialidades):
     page.click('button.ptur-buscadorTurnos-btnOpc:has-text("Para mi")')
     page.wait_for_load_state("networkidle")
 
-    page.screenshot(path="debug_04_after_parami.png")
-    # Debug what buttons are visible
+    # Wait for specialty buttons to load (portal shows a spinner until list is ready)
+    try:
+        page.wait_for_function(
+            '''() => {
+                const menu = new Set(["consulta medica","estudios","laboratorio",
+                                      "para mi","para un familiar","para un beneficiario",
+                                      "testa pascual domingo","li gotti ariana"]);
+                const norm = s => s.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim();
+                return [...document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")]
+                       .some(b => !menu.has(norm(b.innerText)));
+            }''',
+            timeout=20000
+        )
+    except Exception:
+        pass  # If timeout, we'll report specialty not found
+
     all_btns = page.evaluate('''
         () => [...document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")].map(b => b.innerText.trim())
     ''')
-    print(f"[turnos] buttons after Para mi: {all_btns}")
-
-    # Some accounts show a patient-selection step before specialty.
-    # Detect by trying to click the specialty first; if not found, click the first
-    # non-menu button (patient name) then retry.
-    def navigate_to_specialty(especialidad):
-        clicked = _try_click_specialty(page, especialidad)
-        if not clicked:
-            # Might be on patient-selection step — click first non-menu button
-            patient_clicked = page.evaluate('''
-                () => {
-                    const menu = new Set(["consulta medica","estudios","laboratorio",
-                                          "para mi","para un familiar","para un beneficiario"]);
-                    const norm = s => s.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim();
-                    for (const btn of document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")) {
-                        if (!menu.has(norm(btn.innerText))) { btn.click(); return true; }
-                    }
-                    return false;
-                }
-            ''')
-            if patient_clicked:
-                print("[turnos] Clicked patient button, retrying specialty search")
-                page.wait_for_load_state("networkidle")
-                after_patient = page.evaluate('''
-                    () => [...document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")].map(b => b.innerText.trim())
-                ''')
-                print(f"[turnos] buttons after patient click: {after_patient}")
-                all_btns_full = page.evaluate('''
-                    () => [...document.querySelectorAll("button")].map(b => ({
-                        t: b.innerText.trim().slice(0,60),
-                        c: b.className.slice(0,80)
-                    }))
-                ''')
-                print(f"[turnos] ALL buttons: {all_btns_full}")
-                page.screenshot(path="debug_05_after_patient_click.png")
-                clicked = _try_click_specialty(page, especialidad)
-        return clicked
+    print(f"[turnos] specialty buttons: {all_btns}")
 
     for especialidad in especialidades:
-        clicked = navigate_to_specialty(especialidad)
+        clicked = _try_click_specialty(page, especialidad)
         if not clicked:
             print(f"[monitor] Especialidad '{especialidad}' no encontrada en el portal")
             continue
