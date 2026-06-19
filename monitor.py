@@ -31,7 +31,7 @@ def login(page):
     ''')
     print(f"[login] buttons on page: {buttons}")
 
-    page.locator('button').nth(0).click()
+    page.locator('button.ptur-buttonLogin').click()
     page.wait_for_timeout(2000)
     page.screenshot(path="debug_03_after_click.png")
     print(f"[login] URL after click: {page.url}")
