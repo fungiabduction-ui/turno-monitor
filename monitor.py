@@ -16,47 +16,71 @@ def login(page):
     page.wait_for_load_state("networkidle")
     page.fill('[name="nro_documento"]', os.environ["PORTAL_DNI"])
     page.fill('[name="password"]', os.environ["PORTAL_PASSWORD"])
-    page.click('button[type="submit"]')
+    page.press('[name="password"]', 'Enter')
     page.wait_for_load_state("networkidle")
     if page.url.startswith("https://portal.dim.com.ar/") and page.query_selector('[name="nro_documento"]'):
         raise RuntimeError(f"Login failed — still on login page: {page.url}")
 
 
 def get_available_turnos(page, especialidades):
-    """
-    Retorna lista de dicts: [{especialidad, medico, fecha, hora}, ...]
-    Completar con selectores reales de PORTAL_NOTES.md.
-    """
     turnos = []
 
-    # === COMPLETAR CON SELECTORES DE PORTAL_NOTES.md ===
-    #
-    # Patrón general (ajustar nombres de selectores):
-    #
-    # # Navegar a sección de turnos
-    # page.click('[selector del link/botón de turnos]')
-    # page.wait_for_load_state("networkidle")
-    #
-    # for especialidad in especialidades:
-    #     # Seleccionar especialidad
-    #     page.select_option('[selector dropdown especialidad]', label=especialidad)
-    #     # o: page.click(f'text={especialidad}')
-    #     page.wait_for_load_state("networkidle")
-    #
-    #     # Iterar turnos disponibles
-    #     items = page.query_selector_all('[selector de cada fila/card de turno]')
-    #     for item in items:
-    #         medico = item.query_selector('[selector médico]').inner_text().strip()
-    #         fecha = item.query_selector('[selector fecha]').inner_text().strip()
-    #         hora = item.query_selector('[selector hora]').inner_text().strip()
-    #         turnos.append({
-    #             "especialidad": especialidad,
-    #             "medico": medico,
-    #             "fecha": fecha,
-    #             "hora": hora,
-    #         })
-    #
-    # =====================================================
+    page.click('button.ptur-buscadorTurnos-btnOpc:has-text("Consulta médica")')
+    page.wait_for_load_state("networkidle")
+
+    page.click('button.ptur-buscadorTurnos-btnOpc:has-text("Para mi")')
+    page.wait_for_load_state("networkidle")
+
+    for especialidad in especialidades:
+        # Click specialty button matching normalized name (handles accents/case)
+        clicked = page.evaluate(f'''
+            () => {{
+                const norm = s => s.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim();
+                for (const btn of document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")) {{
+                    if (norm(btn.innerText) === "{especialidad}") {{ btn.click(); return true; }}
+                }}
+                return false;
+            }}
+        ''')
+        if not clicked:
+            print(f"[monitor] Especialidad '{especialidad}' no encontrada en el portal")
+            continue
+
+        page.wait_for_load_state("networkidle")
+        page.click('button.ptur-consulta-botonSiguiente')
+        page.wait_for_load_state("networkidle")
+
+        slots = page.evaluate('''
+            () => {
+                const results = [];
+                document.querySelectorAll("button").forEach(btn => {
+                    if (btn.innerText.trim() !== "Confirmar") return;
+                    let el = btn;
+                    for (let i = 0; i < 6; i++) el = el.parentElement;
+                    const doctorEl = el.querySelector("[class*=rb16m]");
+                    const timeEl   = el.querySelector("[class*=rb16t]");
+                    const dateEl   = timeEl ? timeEl.previousElementSibling : null;
+                    const specEl   = el.querySelector("p");
+                    results.push({
+                        medico:       doctorEl ? doctorEl.innerText.trim() : "",
+                        fecha:        dateEl   ? dateEl.innerText.trim()   : "",
+                        hora:         timeEl   ? timeEl.innerText.trim()   : "",
+                        especialidad: specEl   ? specEl.innerText.trim()   : "",
+                    });
+                });
+                return results;
+            }
+        ''')
+
+        for slot in slots:
+            if slot["medico"]:
+                slot["especialidad"] = slot["especialidad"] or especialidad
+                turnos.append(slot)
+
+        if len(especialidades) > 1:
+            page.go_back()
+            page.go_back()
+            page.wait_for_load_state("networkidle")
 
     return turnos
 

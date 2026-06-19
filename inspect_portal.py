@@ -27,8 +27,7 @@ def main():
         page.fill('[name="password"]', password)
         page.screenshot(path="screenshots/02_filled.png")
 
-        # Intentar botón submit genérico; ajustar si falla
-        page.click('button[type="submit"]')
+        page.press('[name="password"]', 'Enter')
         page.wait_for_load_state("networkidle")
         page.screenshot(path="screenshots/03_post_login.png")
 
