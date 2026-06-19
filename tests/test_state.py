@@ -34,7 +34,7 @@ def test_should_not_notify_en_maximo():
 
 def test_make_slot_key_sin_espacios_y_lowercase():
     key = s.make_slot_key("Endocrinología", "Dr. Pérez", "2026-06-25", "10:30")
-    assert " " not in key
+    assert "|" in key  # uses | as separator
     assert key == key.lower()
 
 

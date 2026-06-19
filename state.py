@@ -36,5 +36,5 @@ def increment(st, slot_key):
 
 
 def make_slot_key(especialidad, medico, fecha, hora):
-    raw = f"{especialidad}_{medico}_{fecha}_{hora}"
-    return raw.lower().replace(" ", "_")
+    raw = f"{especialidad}|{medico}|{fecha}|{hora}"
+    return raw.lower().strip()

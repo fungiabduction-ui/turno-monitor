@@ -18,6 +18,8 @@ def login(page):
     page.fill('[name="password"]', os.environ["PORTAL_PASSWORD"])
     page.click('button[type="submit"]')
     page.wait_for_load_state("networkidle")
+    if page.url.startswith("https://portal.dim.com.ar/") and page.query_selector('[name="nro_documento"]'):
+        raise RuntimeError(f"Login failed — still on login page: {page.url}")
 
 
 def get_available_turnos(page, especialidades):

@@ -6,8 +6,12 @@ Path("screenshots").mkdir(exist_ok=True)
 
 
 def main():
-    dni = os.environ.get("PORTAL_DNI", "32771311")
-    password = os.environ.get("PORTAL_PASSWORD", "32771311")
+    dni = os.environ.get("PORTAL_DNI")
+    password = os.environ.get("PORTAL_PASSWORD")
+    if not dni or not password:
+        print("Error: Set PORTAL_DNI and PORTAL_PASSWORD environment variables first.")
+        print("  Windows: $env:PORTAL_DNI='32771311'; $env:PORTAL_PASSWORD='32771311'")
+        return
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False, slow_mo=800)
