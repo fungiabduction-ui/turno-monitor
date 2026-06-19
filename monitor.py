@@ -77,6 +77,7 @@ def main():
     gmail_pass = os.environ.get("GMAIL_APP_PASSWORD", "")
     tg_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
+    turnos = []
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
