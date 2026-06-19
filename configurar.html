@@ -126,7 +126,14 @@
       tags[key].forEach((val, i) => {
         const tag = document.createElement('div');
         tag.className = 'tag';
-        tag.innerHTML = `<span>${val}</span><button onclick="removeTag('${key}', ${i})" title="Eliminar">×</button>`;
+        const span = document.createElement('span');
+        span.textContent = val;
+        const btn = document.createElement('button');
+        btn.textContent = '×';
+        btn.title = 'Eliminar';
+        btn.addEventListener('click', () => removeTag(key, i));
+        tag.appendChild(span);
+        tag.appendChild(btn);
         list.appendChild(tag);
       });
     }
@@ -157,7 +164,7 @@
         if (!res.ok) throw new Error(`GitHub API: ${res.status}`);
         const file = await res.json();
         currentSha = file.sha;
-        const config = jsyaml.load(atob(file.content));
+        const config = jsyaml.load(decodeURIComponent(escape(atob(file.content))));
 
         tags.especialidades = config.especialidades || [];
         tags.emails = config.notificaciones?.emails || [];
@@ -185,7 +192,7 @@
       const config = {
         especialidades: tags.especialidades,
         notificaciones: {
-          max_por_turno_por_dia: parseInt(document.getElementById('max-notif').value, 10),
+          max_por_turno_por_dia: parseInt(document.getElementById('max-notif').value, 10) || 6,
           gmail_sender: document.getElementById('gmail-sender').value.trim(),
           emails: tags.emails,
           telegram_chat_ids: tags.telegram,
