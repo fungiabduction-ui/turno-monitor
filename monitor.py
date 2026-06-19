@@ -53,6 +53,11 @@ def get_available_turnos(page, especialidades):
     page.click('button.ptur-buscadorTurnos-btnOpc:has-text("Para mi")')
     page.wait_for_load_state("networkidle")
 
+    all_btns = page.evaluate('''
+        () => [...document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")].map(b => b.innerText.trim())
+    ''')
+    print(f"[turnos] especialidad buttons: {all_btns}")
+
     for especialidad in especialidades:
         # Click specialty button matching normalized name (handles accents/case)
         clicked = page.evaluate(f'''
