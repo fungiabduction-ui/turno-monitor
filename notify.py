@@ -18,11 +18,13 @@ def send_email(recipients, subject, body, sender, gmail_app_password):
 def send_telegram(chat_ids, message, bot_token):
     for chat_id in chat_ids:
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        requests.post(
+        response = requests.post(
             url,
             json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"},
             timeout=10,
         )
+        if not response.ok:
+            print(f"[notify] Telegram error for chat_id {chat_id}: {response.status_code} {response.text}")
 
 
 def notify_turno(turno, config, gmail_app_password, telegram_bot_token):
@@ -51,7 +53,13 @@ def notify_turno(turno, config, gmail_app_password, telegram_bot_token):
     sender = notif.get("gmail_sender") or (emails[0] if emails else None)
 
     if emails and sender and gmail_app_password:
-        send_email(emails, subject, body, sender, gmail_app_password)
+        try:
+            send_email(emails, subject, body, sender, gmail_app_password)
+        except Exception as e:
+            print(f"[notify] Email error: {e}")
 
     if chat_ids and telegram_bot_token:
-        send_telegram(chat_ids, html_msg, telegram_bot_token)
+        try:
+            send_telegram(chat_ids, html_msg, telegram_bot_token)
+        except Exception as e:
+            print(f"[notify] Telegram error: {e}")
