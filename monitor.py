@@ -72,18 +72,32 @@ def get_available_turnos(page, especialidades):
         page.click('button.ptur-consulta-botonSiguiente')
         page.wait_for_load_state("networkidle")
 
+        # Wait for appointment cards to appear (async load after Siguiente)
+        try:
+            page.wait_for_selector('button:has-text("Confirmar")', timeout=15000)
+        except Exception:
+            pass  # No appointments available
+
         slots = page.evaluate('''
             () => {
+                const seen = new Set();
                 const results = [];
-                document.querySelectorAll("button").forEach(btn => {
-                    if (btn.innerText.trim() !== "Confirmar") return;
-                    let el = btn;
-                    for (let i = 0; i < 6; i++) el = el.parentElement;
+                document.querySelectorAll("button:has-text('Confirmar')").forEach(btn => {
+                    // Walk up to find the card container (stop when we find one with a doctor name)
+                    let el = btn.parentElement;
+                    for (let i = 0; i < 8; i++) {
+                        if (el && el.querySelector("[class*=rb16m]")) break;
+                        el = el ? el.parentElement : null;
+                    }
+                    if (!el) return;
                     const doctorEl = el.querySelector("[class*=rb16m]");
                     const timeEl   = el.querySelector("[class*=rb16t]");
                     const dateEl   = timeEl ? timeEl.previousElementSibling : null;
                     const ps       = el.querySelectorAll("p");
                     const addrEl   = el.querySelector("a[href]");
+                    const key = (doctorEl?.innerText||"") + "|" + (dateEl?.innerText||"") + "|" + (timeEl?.innerText||"");
+                    if (seen.has(key)) return;
+                    seen.add(key);
                     results.push({
                         medico:       doctorEl ? doctorEl.innerText.trim() : "",
                         fecha:        dateEl   ? dateEl.innerText.trim()   : "",
