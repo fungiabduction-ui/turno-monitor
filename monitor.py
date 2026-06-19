@@ -19,7 +19,7 @@ def login(page):
     page.wait_for_timeout(1000)
 
     # Real mouse click on first button (auto-waits for visibility)
-    page.locator('button').first().click()
+    page.locator('button').nth(0).click()
 
     # Wait for login form to disappear (means login succeeded)
     try:
