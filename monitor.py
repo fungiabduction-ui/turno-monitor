@@ -65,6 +65,7 @@ def get_available_turnos(page, especialidades):
     page.click('button.ptur-buscadorTurnos-btnOpc:has-text("Para mi")')
     page.wait_for_load_state("networkidle")
 
+    page.screenshot(path="debug_04_after_parami.png")
     # Debug what buttons are visible
     all_btns = page.evaluate('''
         () => [...document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")].map(b => b.innerText.trim())
@@ -103,6 +104,7 @@ def get_available_turnos(page, especialidades):
                     }))
                 ''')
                 print(f"[turnos] ALL buttons: {all_btns_full}")
+                page.screenshot(path="debug_05_after_patient_click.png")
                 clicked = _try_click_specialty(page, especialidad)
         return clicked
 
