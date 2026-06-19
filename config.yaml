@@ -1,0 +1,10 @@
+especialidades:
+  - endocrinologia
+
+notificaciones:
+  max_por_turno_por_dia: 6
+  gmail_sender: fungiabduction@gmail.com
+  emails:
+    - fungiabduction@gmail.com
+  telegram_chat_ids:
+    - "REEMPLAZAR_CON_TU_CHAT_ID"
