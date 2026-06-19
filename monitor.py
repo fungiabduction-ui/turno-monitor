@@ -82,7 +82,9 @@ def get_available_turnos(page, especialidades):
             () => {
                 const seen = new Set();
                 const results = [];
-                document.querySelectorAll("button:has-text('Confirmar')").forEach(btn => {
+                [...document.querySelectorAll("button")]
+                  .filter(b => b.innerText.trim() === "Confirmar")
+                  .forEach(btn => {
                     // Walk up to find the card container (stop when we find one with a doctor name)
                     let el = btn.parentElement;
                     for (let i = 0; i < 8; i++) {
