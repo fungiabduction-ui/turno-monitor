@@ -2,7 +2,7 @@ especialidades:
   - endocrinologia
 
 notificaciones:
-  max_por_turno_por_dia: 6
+  max_por_turno_por_dia: 1
   gmail_sender: fungiabduction@gmail.com
   emails:
     - jonatantesta@msn.com
