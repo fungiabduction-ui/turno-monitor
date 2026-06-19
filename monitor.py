@@ -14,17 +14,33 @@ def load_config():
 def login(page):
     page.goto("https://portal.dim.com.ar/")
     page.wait_for_load_state("networkidle")
+    page.screenshot(path="debug_01_loaded.png")
+
     page.fill('[name="nro_documento"]', os.environ["PORTAL_DNI"])
     page.fill('[name="password"]', os.environ["PORTAL_PASSWORD"])
     page.wait_for_timeout(1000)
+    page.screenshot(path="debug_02_filled.png")
 
-    # Real mouse click on first button (auto-waits for visibility)
+    buttons = page.evaluate('''
+        () => [...document.querySelectorAll("button")].map(b => ({
+            text: b.innerText.trim(),
+            cls: b.className,
+            h: b.offsetHeight,
+            w: b.offsetWidth
+        }))
+    ''')
+    print(f"[login] buttons on page: {buttons}")
+
     page.locator('button').nth(0).click()
+    page.wait_for_timeout(2000)
+    page.screenshot(path="debug_03_after_click.png")
+    print(f"[login] URL after click: {page.url}")
 
     # Wait for login form to disappear (means login succeeded)
     try:
         page.wait_for_selector('[name="nro_documento"]', state="detached", timeout=30000)
     except Exception:
+        page.screenshot(path="debug_04_timeout.png")
         raise RuntimeError("Login fallido — el portal no respondió o las credenciales son incorrectas")
 
 
