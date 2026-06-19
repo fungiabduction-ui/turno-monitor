@@ -96,6 +96,13 @@ def get_available_turnos(page, especialidades):
                     () => [...document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")].map(b => b.innerText.trim())
                 ''')
                 print(f"[turnos] buttons after patient click: {after_patient}")
+                all_btns_full = page.evaluate('''
+                    () => [...document.querySelectorAll("button")].map(b => ({
+                        t: b.innerText.trim().slice(0,60),
+                        c: b.className.slice(0,80)
+                    }))
+                ''')
+                print(f"[turnos] ALL buttons: {all_btns_full}")
                 clicked = _try_click_specialty(page, especialidad)
         return clicked
 
