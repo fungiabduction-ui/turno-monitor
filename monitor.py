@@ -16,20 +16,14 @@ def login(page):
     page.wait_for_load_state("networkidle")
     page.fill('[name="nro_documento"]', os.environ["PORTAL_DNI"])
     page.fill('[name="password"]', os.environ["PORTAL_PASSWORD"])
-    page.wait_for_timeout(500)
+    page.wait_for_timeout(1000)
 
-    # Click the visible login button (tries several strategies)
-    page.evaluate('''
-        () => {
-            const btns = [...document.querySelectorAll("button")]
-                .filter(b => b.offsetHeight > 0 && b.offsetWidth > 0);
-            if (btns.length > 0) btns[0].click();
-        }
-    ''')
+    # Real mouse click on first button (auto-waits for visibility)
+    page.locator('button').first().click()
 
     # Wait for login form to disappear (means login succeeded)
     try:
-        page.wait_for_selector('[name="nro_documento"]', state="detached", timeout=15000)
+        page.wait_for_selector('[name="nro_documento"]', state="detached", timeout=30000)
     except Exception:
         raise RuntimeError("Login fallido — el portal no respondió o las credenciales son incorrectas")
 
@@ -120,12 +114,20 @@ def main():
 
     turnos = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-setuid-sandbox"],
+        )
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+        )
+        page = context.new_page()
+        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         try:
             login(page)
             turnos = get_available_turnos(page, especialidades)
         finally:
+            context.close()
             browser.close()
 
     for turno in turnos:
