@@ -27,7 +27,14 @@ def main():
         page.fill('[name="password"]', password)
         page.screenshot(path="screenshots/02_filled.png")
 
-        page.press('[name="password"]', 'Enter')
+        page.wait_for_timeout(500)
+        page.evaluate('''
+            () => {
+                const btns = [...document.querySelectorAll("button")]
+                    .filter(b => b.offsetHeight > 0 && b.offsetWidth > 0);
+                if (btns.length > 0) btns[0].click();
+            }
+        ''')
         page.wait_for_load_state("networkidle")
         page.screenshot(path="screenshots/03_post_login.png")
 

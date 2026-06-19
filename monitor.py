@@ -16,10 +16,22 @@ def login(page):
     page.wait_for_load_state("networkidle")
     page.fill('[name="nro_documento"]', os.environ["PORTAL_DNI"])
     page.fill('[name="password"]', os.environ["PORTAL_PASSWORD"])
-    page.press('[name="password"]', 'Enter')
-    page.wait_for_load_state("networkidle")
-    if page.url.startswith("https://portal.dim.com.ar/") and page.query_selector('[name="nro_documento"]'):
-        raise RuntimeError(f"Login failed — still on login page: {page.url}")
+    page.wait_for_timeout(500)
+
+    # Click the visible login button (tries several strategies)
+    page.evaluate('''
+        () => {
+            const btns = [...document.querySelectorAll("button")]
+                .filter(b => b.offsetHeight > 0 && b.offsetWidth > 0);
+            if (btns.length > 0) btns[0].click();
+        }
+    ''')
+
+    # Wait for login form to disappear (means login succeeded)
+    try:
+        page.wait_for_selector('[name="nro_documento"]', state="detached", timeout=15000)
+    except Exception:
+        raise RuntimeError("Login fallido — el portal no respondió o las credenciales son incorrectas")
 
 
 def get_available_turnos(page, especialidades):
