@@ -31,3 +31,4 @@ else:
     print(f"\n¡Se encontraron {len(turnos)} turno(s)!")
     for t in turnos:
         print(f"  - {t['especialidad']} | {t['medico']} | {t['fecha']} {t['hora']}")
+        print(f"    Lugar: {t.get('sucursal','')} — {t.get('direccion','')}")

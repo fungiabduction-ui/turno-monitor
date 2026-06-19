@@ -32,18 +32,24 @@ def notify_turno(turno, config, gmail_app_password, telegram_bot_token):
     medico = turno.get("medico", "sin especificar")
     fecha = turno["fecha"]
     hora = turno["hora"]
+    sucursal = turno.get("sucursal", "")
+    direccion = turno.get("direccion", "")
+
+    ubicacion = f"{sucursal} — {direccion}" if sucursal and direccion else sucursal or direccion
 
     subject = f"[Turno disponible] {especialidad} — {fecha} {hora}"
     body = (
         f"Turno disponible: {especialidad}\n"
         f"Médico: {medico}\n"
-        f"Fecha: {fecha} — {hora}\n\n"
+        f"Fecha: {fecha} — {hora}\n"
+        f"Lugar: {ubicacion}\n\n"
         f"Reservar en: {PORTAL_URL}"
     )
     html_msg = (
         f"<b>[Turno disponible] {especialidad}</b>\n\n"
         f"Médico: {medico}\n"
-        f"Fecha: {fecha} — {hora}\n\n"
+        f"Fecha: {fecha} — {hora}\n"
+        f"Lugar: {ubicacion}\n\n"
         f"<a href='{PORTAL_URL}'>Reservar ahora</a>"
     )
 

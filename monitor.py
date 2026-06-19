@@ -60,12 +60,15 @@ def get_available_turnos(page, especialidades):
                     const doctorEl = el.querySelector("[class*=rb16m]");
                     const timeEl   = el.querySelector("[class*=rb16t]");
                     const dateEl   = timeEl ? timeEl.previousElementSibling : null;
-                    const specEl   = el.querySelector("p");
+                    const ps       = el.querySelectorAll("p");
+                    const addrEl   = el.querySelector("a[href]");
                     results.push({
                         medico:       doctorEl ? doctorEl.innerText.trim() : "",
                         fecha:        dateEl   ? dateEl.innerText.trim()   : "",
                         hora:         timeEl   ? timeEl.innerText.trim()   : "",
-                        especialidad: specEl   ? specEl.innerText.trim()   : "",
+                        especialidad: ps[0]    ? ps[0].innerText.trim()    : "",
+                        sucursal:     ps[1]    ? ps[1].innerText.trim()    : "",
+                        direccion:    addrEl   ? addrEl.innerText.trim()   : "",
                     });
                 });
                 return results;
