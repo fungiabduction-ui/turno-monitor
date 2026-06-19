@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor de Turnos — Configuración</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #333; padding: 24px; max-width: 600px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin-bottom: 24px; color: #1a1a2e; }
+    h2 { font-size: 1rem; margin-bottom: 12px; color: #444; }
+    .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    label { display: block; font-size: .85rem; color: #666; margin-bottom: 4px; }
+    input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px;
+      font-size: .95rem; margin-bottom: 8px;
+    }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 32px; }
+    .tag { display: flex; align-items: center; gap: 4px; background: #e8f4fd; color: #1a6fa8;
+           padding: 4px 10px; border-radius: 20px; font-size: .85rem; }
+    .tag button { background: none; border: none; cursor: pointer; color: #888; font-size: 1.1rem; line-height: 1; padding: 0 2px; }
+    .add-row { display: flex; gap: 8px; }
+    .add-row input { margin-bottom: 0; flex: 1; }
+    .btn-sm { padding: 8px 14px; background: #eee; border: 1px solid #ddd; border-radius: 6px;
+              cursor: pointer; font-size: .85rem; white-space: nowrap; }
+    .btn-sm:hover { background: #e0e0e0; }
+    .btn-primary { width: 100%; padding: 12px; background: #1a6fa8; color: white;
+                   border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
+    .btn-primary:hover { background: #145d8e; }
+    .btn-primary:disabled { background: #aaa; cursor: not-allowed; }
+    #status { margin-top: 12px; font-size: .9rem; min-height: 1.2em; padding: 4px 0; }
+    .ok { color: #2e7d32; } .err { color: #c62828; } .loading { color: #888; }
+    small { font-size: .78rem; color: #999; display: block; margin-top: -4px; margin-bottom: 8px; }
+    .load-row { display: flex; gap: 8px; align-items: flex-end; }
+    .load-row input { margin-bottom: 0; flex: 1; }
+  </style>
+</head>
+<body>
+  <h1>Monitor de Turnos DIM</h1>
+
+  <div class="card">
+    <h2>Conexión con GitHub</h2>
+    <label>Usuario de GitHub</label>
+    <input type="text" id="gh-owner" placeholder="tu-usuario">
+    <label>Nombre del repositorio</label>
+    <input type="text" id="gh-repo" placeholder="turno-monitor">
+    <label>Personal Access Token</label>
+    <small>Se guarda solo en tu navegador (localStorage). Necesario para leer y guardar config.yaml.</small>
+    <div class="load-row">
+      <input type="password" id="gh-token" placeholder="ghp_...">
+      <button class="btn-sm" onclick="loadConfig()">Cargar config</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Especialidades a monitorear</h2>
+    <div class="tag-list" id="especialidades-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-especialidad" placeholder="ej: cardiologia">
+      <button class="btn-sm" onclick="addTag('especialidades')">+ Agregar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Emails de notificación</h2>
+    <div class="tag-list" id="emails-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-email" placeholder="otro@mail.com">
+      <button class="btn-sm" onclick="addTag('emails')">+ Agregar</button>
+    </div>
+    <label style="margin-top:14px">Email remitente (la cuenta Gmail cuyo App Password configuraste)</label>
+    <input type="text" id="gmail-sender" placeholder="fungiabduction@gmail.com">
+  </div>
+
+  <div class="card">
+    <h2>Telegram Chat IDs</h2>
+    <small>Obtené tu chat_id escribiéndole a @userinfobot en Telegram.</small>
+    <div class="tag-list" id="telegram-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-telegram" placeholder="123456789">
+      <button class="btn-sm" onclick="addTag('telegram')">+ Agregar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Límite de notificaciones</h2>
+    <label>Máximo de notificaciones por turno por día</label>
+    <input type="number" id="max-notif" min="1" max="50" value="6" style="width:100px">
+  </div>
+
+  <button class="btn-primary" onclick="saveConfig()">Guardar configuración</button>
+  <div id="status"></div>
+
+  <script>
+    const tags = { especialidades: [], emails: [], telegram: [] };
+    const inputIds = { especialidades: 'new-especialidad', emails: 'new-email', telegram: 'new-telegram' };
+    const listIds = { especialidades: 'especialidades-list', emails: 'emails-list', telegram: 'telegram-list' };
+    let currentSha = null;
+
+    window.addEventListener('load', () => {
+      ['gh-token', 'gh-owner', 'gh-repo'].forEach(id => {
+        const val = localStorage.getItem(id);
+        if (val) document.getElementById(id).value = val;
+      });
+    });
+
+    function getGhInfo() {
+      const owner = document.getElementById('gh-owner').value.trim();
+      const repo = document.getElementById('gh-repo').value.trim();
+      const token = document.getElementById('gh-token').value.trim();
+      ['gh-owner', 'gh-repo'].forEach(id => localStorage.setItem(id, document.getElementById(id).value.trim()));
+      if (token) localStorage.setItem('gh-token', token);
+      return { owner, repo, token: token || localStorage.getItem('gh-token') || '' };
+    }
+
+    function setStatus(msg, cls) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = cls;
+    }
+
+    function renderTags(key) {
+      const list = document.getElementById(listIds[key]);
+      list.innerHTML = '';
+      tags[key].forEach((val, i) => {
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.innerHTML = `<span>${val}</span><button onclick="removeTag('${key}', ${i})" title="Eliminar">×</button>`;
+        list.appendChild(tag);
+      });
+    }
+
+    function addTag(key) {
+      const input = document.getElementById(inputIds[key]);
+      const val = input.value.trim().toLowerCase().replace(/\s+/g, '_');
+      if (!val || tags[key].includes(val)) return;
+      tags[key].push(val);
+      renderTags(key);
+      input.value = '';
+    }
+
+    function removeTag(key, index) {
+      tags[key].splice(index, 1);
+      renderTags(key);
+    }
+
+    async function loadConfig() {
+      const { owner, repo, token } = getGhInfo();
+      if (!owner || !repo || !token) { setStatus('Completá usuario, repo y token.', 'err'); return; }
+      setStatus('Cargando...', 'loading');
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/config.yaml`,
+          { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' } }
+        );
+        if (!res.ok) throw new Error(`GitHub API: ${res.status}`);
+        const file = await res.json();
+        currentSha = file.sha;
+        const config = jsyaml.load(atob(file.content));
+
+        tags.especialidades = config.especialidades || [];
+        tags.emails = config.notificaciones?.emails || [];
+        tags.telegram = (config.notificaciones?.telegram_chat_ids || []).map(String);
+
+        document.getElementById('gmail-sender').value = config.notificaciones?.gmail_sender || '';
+        document.getElementById('max-notif').value = config.notificaciones?.max_por_turno_por_dia || 6;
+
+        ['especialidades', 'emails', 'telegram'].forEach(renderTags);
+        setStatus('Config cargada.', 'ok');
+      } catch (e) {
+        setStatus(`Error: ${e.message}`, 'err');
+      }
+    }
+
+    async function saveConfig() {
+      const { owner, repo, token } = getGhInfo();
+      if (!owner || !repo || !token) { setStatus('Completá usuario, repo y token.', 'err'); return; }
+      if (!currentSha) { setStatus('Primero cargá la config con "Cargar config".', 'err'); return; }
+
+      const btn = document.querySelector('.btn-primary');
+      btn.disabled = true;
+      setStatus('Guardando...', 'loading');
+
+      const config = {
+        especialidades: tags.especialidades,
+        notificaciones: {
+          max_por_turno_por_dia: parseInt(document.getElementById('max-notif').value, 10),
+          gmail_sender: document.getElementById('gmail-sender').value.trim(),
+          emails: tags.emails,
+          telegram_chat_ids: tags.telegram,
+        }
+      };
+
+      const yamlStr = jsyaml.dump(config, { indent: 2 });
+      const encoded = btoa(unescape(encodeURIComponent(yamlStr)));
+
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/config.yaml`,
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/vnd.github+json',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: 'config: actualizar desde panel',
+              content: encoded,
+              sha: currentSha,
+            }),
+          }
+        );
+        if (!res.ok) throw new Error(`${res.status} — ${await res.text()}`);
+        const data = await res.json();
+        currentSha = data.content.sha;
+        setStatus('Configuración guardada y commiteada al repo.', 'ok');
+      } catch (e) {
+        setStatus(`Error al guardar: ${e.message}`, 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    Object.keys(inputIds).forEach(key => {
+      document.getElementById(inputIds[key]).addEventListener('keydown', e => {
+        if (e.key === 'Enter') addTag(key);
+      });
+    });
+  </script>
+</body>
+</html>
