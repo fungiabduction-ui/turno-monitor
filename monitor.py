@@ -92,6 +92,10 @@ def get_available_turnos(page, especialidades):
             if patient_clicked:
                 print("[turnos] Clicked patient button, retrying specialty search")
                 page.wait_for_load_state("networkidle")
+                after_patient = page.evaluate('''
+                    () => [...document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")].map(b => b.innerText.trim())
+                ''')
+                print(f"[turnos] buttons after patient click: {after_patient}")
                 clicked = _try_click_specialty(page, especialidad)
         return clicked
 
