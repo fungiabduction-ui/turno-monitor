@@ -1,5 +1,6 @@
 import os
 import subprocess
+import unicodedata
 import yaml
 from playwright.sync_api import sync_playwright
 from state import load_state, save_state, should_notify, increment, make_slot_key
@@ -162,7 +163,18 @@ def main():
             context.close()
             browser.close()
 
+    dias_permitidos = {"sabado", "domingo", "lunes"}
+
     for turno in turnos:
+        fecha_norm = "".join(
+            c for c in unicodedata.normalize("NFD", turno["fecha"].lower())
+            if unicodedata.category(c) != "Mn"
+        )
+        dia = fecha_norm.split()[0] if fecha_norm else ""
+        if dia not in dias_permitidos:
+            print(f"[monitor] Saltando turno en día '{dia}' (no es sáb/dom/lun): {turno['fecha']}")
+            continue
+
         key = make_slot_key(
             turno["especialidad"],
             turno.get("medico", ""),
