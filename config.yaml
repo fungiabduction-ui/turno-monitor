@@ -6,5 +6,4 @@ notificaciones:
   gmail_sender: fungiabduction@gmail.com
   emails:
     - jonatantesta@msn.com
-  telegram_chat_ids:
-    - "REEMPLAZAR_CON_TU_CHAT_ID"
+  telegram_chat_ids: []

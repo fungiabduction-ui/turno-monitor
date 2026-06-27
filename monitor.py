@@ -1,6 +1,7 @@
 import os
 import subprocess
 import unicodedata
+from pathlib import Path
 import yaml
 from playwright.sync_api import sync_playwright
 from state import load_state, save_state, should_notify, increment, make_slot_key
@@ -128,9 +129,11 @@ def get_available_turnos(page, especialidades):
 
 
 def commit_state():
+    from datetime import datetime, timezone
     subprocess.run(["git", "config", "user.email", "bot@github.com"], check=False)
     subprocess.run(["git", "config", "user.name", "turno-monitor[bot]"], check=False)
-    subprocess.run(["git", "add", "last_seen.json"], check=False)
+    Path("last_run.txt").write_text(datetime.now(timezone.utc).isoformat(), encoding="utf-8")
+    subprocess.run(["git", "add", "last_seen.json", "last_run.txt"], check=False)
     result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True)
     if result.returncode != 0:
         subprocess.run(["git", "commit", "-m", "chore: actualizar estado turnos"], check=False)
