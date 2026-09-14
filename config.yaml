@@ -1,6 +1,11 @@
 especialidades:
   - endocrinologia
 
+filtros:
+  meses_permitidos:
+    - sep
+  dias_permitidos: []
+
 notificaciones:
   max_por_turno_por_dia: 1
   gmail_sender: fungiabduction@gmail.com
