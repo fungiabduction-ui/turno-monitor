@@ -39,32 +39,77 @@ def _try_click_specialty(page, especialidad):
     ''')
 
 
+def _extract_slots(page):
+    return page.evaluate('''
+        () => {
+            const seen = new Set();
+            const results = [];
+            [...document.querySelectorAll("button")]
+              .filter(b => b.innerText.trim() === "Confirmar")
+              .forEach(btn => {
+                // Walk up to find the card container (stop when we find one with a doctor name)
+                let el = btn.parentElement;
+                for (let i = 0; i < 8; i++) {
+                    if (el && el.querySelector("[class*=rb16m]")) break;
+                    el = el ? el.parentElement : null;
+                }
+                if (!el) return;
+                const doctorEl = el.querySelector("[class*=rb16m]");
+                const timeEl   = el.querySelector("[class*=rb16t]");
+                const dateEl   = timeEl ? timeEl.previousElementSibling : null;
+                const ps       = el.querySelectorAll("p");
+                const addrEl   = el.querySelector("a[href]");
+                const key = (doctorEl?.innerText||"") + "|" + (dateEl?.innerText||"") + "|" + (timeEl?.innerText||"");
+                if (seen.has(key)) return;
+                seen.add(key);
+                results.push({
+                    medico:       doctorEl ? doctorEl.innerText.trim() : "",
+                    fecha:        dateEl   ? dateEl.innerText.trim()   : "",
+                    hora:         timeEl   ? timeEl.innerText.trim()   : "",
+                    especialidad: ps[0]    ? ps[0].innerText.trim()    : "",
+                    sucursal:     ps[1]    ? ps[1].innerText.trim()    : "",
+                    direccion:    addrEl   ? addrEl.innerText.trim()   : "",
+                });
+            });
+            return results;
+        }
+    ''')
+
+
 def get_available_turnos(page, especialidades):
+    # El portal cachea la pestaña "Consulta médica" en el historial, así que
+    # cada especialidad se busca desde cero con reload() en vez de go_back(),
+    # que es frágil cuando hay más de una especialidad configurada.
     turnos = []
 
-    page.click('button.ptur-buscadorTurnos-btnOpc:has-text("Consulta médica")')
-    page.wait_for_load_state("networkidle")
+    for idx, especialidad in enumerate(especialidades):
+        if idx > 0:
+            page.reload()
+            page.wait_for_load_state("networkidle")
+            page.wait_for_timeout(1000)
 
-    page.click('button.ptur-buscadorTurnos-btnOpc:has-text("Para mi")')
-    page.wait_for_load_state("networkidle")
+        page.click('button.ptur-buscadorTurnos-btnOpc:has-text("Consulta médica")')
+        page.wait_for_load_state("networkidle")
 
-    # Wait for specialty buttons to load (portal shows a spinner until list is ready)
-    try:
-        page.wait_for_function(
-            '''() => {
-                const menu = new Set(["consulta medica","estudios","laboratorio",
-                                      "para mi","para un familiar","para un beneficiario",
-                                      "testa pascual domingo","li gotti ariana"]);
-                const norm = s => s.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim();
-                return [...document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")]
-                       .some(b => !menu.has(norm(b.innerText)));
-            }''',
-            timeout=20000
-        )
-    except Exception:
-        pass  # If timeout, we'll report specialty not found
+        page.click('button.ptur-buscadorTurnos-btnOpc:has-text("Para mi")')
+        page.wait_for_load_state("networkidle")
 
-    for especialidad in especialidades:
+        # Wait for specialty buttons to load (portal shows a spinner until list is ready)
+        try:
+            page.wait_for_function(
+                '''() => {
+                    const menu = new Set(["consulta medica","estudios","laboratorio",
+                                          "para mi","para un familiar","para un beneficiario",
+                                          "testa pascual domingo","li gotti ariana"]);
+                    const norm = s => s.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim();
+                    return [...document.querySelectorAll("button.ptur-buscadorTurnos-btnOpc")]
+                           .some(b => !menu.has(norm(b.innerText)));
+                }''',
+                timeout=20000
+            )
+        except Exception:
+            pass  # If timeout, we'll report specialty not found
+
         clicked = _try_click_specialty(page, especialidad)
         if not clicked:
             print(f"[monitor] Especialidad '{especialidad}' no encontrada en el portal")
@@ -80,50 +125,10 @@ def get_available_turnos(page, especialidades):
         except Exception:
             pass  # No appointments available
 
-        slots = page.evaluate('''
-            () => {
-                const seen = new Set();
-                const results = [];
-                [...document.querySelectorAll("button")]
-                  .filter(b => b.innerText.trim() === "Confirmar")
-                  .forEach(btn => {
-                    // Walk up to find the card container (stop when we find one with a doctor name)
-                    let el = btn.parentElement;
-                    for (let i = 0; i < 8; i++) {
-                        if (el && el.querySelector("[class*=rb16m]")) break;
-                        el = el ? el.parentElement : null;
-                    }
-                    if (!el) return;
-                    const doctorEl = el.querySelector("[class*=rb16m]");
-                    const timeEl   = el.querySelector("[class*=rb16t]");
-                    const dateEl   = timeEl ? timeEl.previousElementSibling : null;
-                    const ps       = el.querySelectorAll("p");
-                    const addrEl   = el.querySelector("a[href]");
-                    const key = (doctorEl?.innerText||"") + "|" + (dateEl?.innerText||"") + "|" + (timeEl?.innerText||"");
-                    if (seen.has(key)) return;
-                    seen.add(key);
-                    results.push({
-                        medico:       doctorEl ? doctorEl.innerText.trim() : "",
-                        fecha:        dateEl   ? dateEl.innerText.trim()   : "",
-                        hora:         timeEl   ? timeEl.innerText.trim()   : "",
-                        especialidad: ps[0]    ? ps[0].innerText.trim()    : "",
-                        sucursal:     ps[1]    ? ps[1].innerText.trim()    : "",
-                        direccion:    addrEl   ? addrEl.innerText.trim()   : "",
-                    });
-                });
-                return results;
-            }
-        ''')
-
-        for slot in slots:
+        for slot in _extract_slots(page):
             if slot["medico"]:
                 slot["especialidad"] = slot["especialidad"] or especialidad
                 turnos.append(slot)
-
-        if len(especialidades) > 1:
-            page.go_back()
-            page.go_back()
-            page.wait_for_load_state("networkidle")
 
     return turnos
 
