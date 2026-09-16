@@ -4,7 +4,12 @@ especialidades:
 filtros:
   meses_permitidos:
     - sep
-  dias_permitidos: []
+  dias_permitidos:
+    - sabado
+    - domingo
+    - lunes
+  sucursales_permitidas:
+    - ramos mejia
 
 notificaciones:
   max_por_turno_por_dia: 1

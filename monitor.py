@@ -166,17 +166,34 @@ def main():
             context.close()
             browser.close()
 
-    dias_permitidos = {"sabado", "domingo", "lunes"}
+    filtros = config.get("filtros", {})
+    meses_permitidos = {m.lower() for m in filtros.get("meses_permitidos", [])}
+    dias_permitidos = {d.lower() for d in filtros.get("dias_permitidos", [])}
+    sucursales_permitidas = {s.lower() for s in filtros.get("sucursales_permitidas", [])}
 
-    for turno in turnos:
-        fecha_norm = "".join(
-            c for c in unicodedata.normalize("NFD", turno["fecha"].lower())
+    def normalizar(texto):
+        return "".join(
+            c for c in unicodedata.normalize("NFD", texto.lower())
             if unicodedata.category(c) != "Mn"
         )
-        dia = fecha_norm.split()[0] if fecha_norm else ""
-        if dia not in dias_permitidos:
-            print(f"[monitor] Saltando turno en día '{dia}' (no es sáb/dom/lun): {turno['fecha']}")
+
+    for turno in turnos:
+        fecha_norm = normalizar(turno["fecha"])
+        partes = fecha_norm.split()
+        dia = partes[0] if partes else ""
+        mes = fecha_norm.split(", ")[-1] if ", " in fecha_norm else ""
+
+        if meses_permitidos and mes not in meses_permitidos:
+            print(f"[monitor] Saltando turno fuera de los meses permitidos: {turno['fecha']}")
             continue
+        if dias_permitidos and dia not in dias_permitidos:
+            print(f"[monitor] Saltando turno en día '{dia}' (no permitido): {turno['fecha']}")
+            continue
+        if sucursales_permitidas:
+            ubicacion_norm = normalizar(turno.get("sucursal", "") + " " + turno.get("direccion", ""))
+            if not any(s in ubicacion_norm for s in sucursales_permitidas):
+                print(f"[monitor] Saltando turno fuera de sucursal permitida: {turno.get('sucursal', '')}")
+                continue
 
         key = make_slot_key(
             turno["especialidad"],
