@@ -88,6 +88,12 @@
   </div>
 
   <div class="card">
+    <h2>Centros médicos</h2>
+    <small>Si no marcás ninguno, se avisan turnos de cualquier sucursal.</small>
+    <div id="sucursales-checks"></div>
+  </div>
+
+  <div class="card">
     <h2>Emails de notificación</h2>
     <div class="tag-list" id="emails-list"></div>
     <div class="add-row">
@@ -131,7 +137,25 @@
       { value: 'clinica medica', label: 'Clínica Médica' },
     ];
 
-    const tags = { especialidades: [], emails: [], telegram: [] };
+    // Sucursales reales vistas en resultados de busqueda (el portal no tiene
+    // una pagina que las liste; se relevaron buscando las 6 especialidades).
+    const SUCURSALES_DISPONIBLES = [
+      { sucursal: 'DIM ONCE', direccion: 'Misiones 141, ONCE (CABA)' },
+      { sucursal: 'DIM Liniers', direccion: 'Av. Rivadavia 10964, Liniers' },
+      { sucursal: 'DIM Belgrano', direccion: 'Belgrano 136, Ramos Mejía' },
+      { sucursal: 'DIM Rivadavia', direccion: 'Av. Rivadavia 14252, Ramos Mejía' },
+      { sucursal: 'DIM Ramos Norte', direccion: 'Ardoino 640 (Segunda Rivadavia), Ramos Mejía' },
+      { sucursal: 'DIM Espora', direccion: 'Espora 18, Ramos Mejía' },
+      { sucursal: 'DIM Morón', direccion: 'Av. Rivadavia 17620, Morón' },
+      { sucursal: 'DIM Cardiovascular', direccion: 'Belgrano 139, Ramos Mejía' },
+      { sucursal: 'DIM Morón 2', direccion: 'Av. Rivadavia 17601, Morón' },
+    ];
+
+    function normalizar(s) {
+      return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    }
+
+    const tags = { especialidades: [], sucursales: [], emails: [], telegram: [] };
     const inputIds = { emails: 'new-email', telegram: 'new-telegram' };
     const listIds = { emails: 'emails-list', telegram: 'telegram-list' };
     let currentSha = null;
@@ -156,6 +180,45 @@
         });
         const span = document.createElement('span');
         span.textContent = label;
+        row.appendChild(check);
+        row.appendChild(span);
+        container.appendChild(row);
+      });
+    }
+
+    function renderSucursales() {
+      const container = document.getElementById('sucursales-checks');
+      container.innerHTML = '';
+      SUCURSALES_DISPONIBLES.forEach(({ sucursal, direccion }) => {
+        const value = normalizar(sucursal);
+        const ubicacionNorm = normalizar(sucursal + ' ' + direccion);
+        const row = document.createElement('label');
+        row.className = 'check-row';
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.checked = tags.sucursales.some(f => ubicacionNorm.includes(f));
+        check.addEventListener('change', () => {
+          if (check.checked) {
+            if (!tags.sucursales.includes(value)) tags.sucursales.push(value);
+          } else {
+            // Un filtro viejo y amplio (ej. "ramos mejia") puede matchear
+            // varias sucursales a la vez. Antes de sacarlo, lo "explota" en
+            // sucursales precisas para no desmarcar de encima las que no
+            // se tocaron.
+            const culprits = tags.sucursales.filter(f => ubicacionNorm.includes(f));
+            tags.sucursales = tags.sucursales.filter(f => !culprits.includes(f));
+            SUCURSALES_DISPONIBLES
+              .filter(s => s.sucursal !== sucursal)
+              .filter(s => culprits.some(f => normalizar(s.sucursal + ' ' + s.direccion).includes(f)))
+              .forEach(s => {
+                const v = normalizar(s.sucursal);
+                if (!tags.sucursales.includes(v)) tags.sucursales.push(v);
+              });
+          }
+          renderSucursales();
+        });
+        const span = document.createElement('span');
+        span.innerHTML = `${sucursal}<br><small style="margin:0">${direccion}</small>`;
         row.appendChild(check);
         row.appendChild(span);
         container.appendChild(row);
@@ -246,6 +309,7 @@
 
         activo = config.activo !== false;
         tags.especialidades = config.especialidades || [];
+        tags.sucursales = (config.filtros?.sucursales_permitidas || []).map(normalizar);
         tags.emails = config.notificaciones?.emails || [];
         tags.telegram = (config.notificaciones?.telegram_chat_ids || []).map(String);
 
@@ -255,6 +319,7 @@
         renderToggle();
         document.getElementById('btn-test-email').disabled = false;
         renderEspecialidades();
+        renderSucursales();
         ['emails', 'telegram'].forEach(renderTags);
         setStatus('Config cargada.', 'ok');
       } catch (e) {
@@ -294,10 +359,11 @@
       setStatus('Guardando...', 'loading');
 
       // Partimos de la config cruda para no pisar campos que este panel no
-      // edita (ej. filtros de mes/dia/sucursal).
+      // edita (ej. filtros de mes/dia).
       const config = { ...loadedConfig };
       config.activo = activo;
       config.especialidades = tags.especialidades;
+      config.filtros = { ...(loadedConfig.filtros || {}), sucursales_permitidas: tags.sucursales };
       config.notificaciones = {
         ...(loadedConfig.notificaciones || {}),
         max_por_turno_por_dia: parseInt(document.getElementById('max-notif').value, 10) || 6,
