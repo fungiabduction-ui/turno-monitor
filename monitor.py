@@ -6,12 +6,34 @@ from pathlib import Path
 import yaml
 from playwright.sync_api import sync_playwright
 from state import load_state, save_state, should_notify, increment, make_slot_key
-from notify import notify_turno
+from notify import notify_turno, send_email
 
 
 def load_config():
     with open("config.yaml", "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def save_config(config):
+    with open("config.yaml", "w", encoding="utf-8") as f:
+        yaml.safe_dump(config, f, allow_unicode=True, sort_keys=False)
+
+
+def send_test_email(config, gmail_pass):
+    notif = config.get("notificaciones", {})
+    emails = notif.get("emails", [])
+    sender = notif.get("gmail_sender") or (emails[0] if emails else None)
+    if not (emails and sender and gmail_pass):
+        print("[monitor] No se pudo mandar el mail de prueba: falta gmail_sender, emails o GMAIL_APP_PASSWORD.")
+        return
+    send_email(
+        emails,
+        "[Turno Monitor] Mail de prueba",
+        "Si recibiste esto, las notificaciones por mail del turno-monitor funcionan bien.",
+        sender,
+        gmail_pass,
+    )
+    print("[monitor] Mail de prueba enviado.")
 
 
 def login(page):
@@ -134,15 +156,13 @@ def get_available_turnos(page, especialidades):
     return turnos
 
 
-def commit_state():
-    from datetime import datetime, timezone
+def git_commit_push(files, message):
     subprocess.run(["git", "config", "user.email", "bot@github.com"], check=False)
     subprocess.run(["git", "config", "user.name", "turno-monitor[bot]"], check=False)
-    Path("last_run.txt").write_text(datetime.now(timezone.utc).isoformat(), encoding="utf-8")
-    subprocess.run(["git", "add", "last_seen.json", "last_run.txt"], check=False)
+    subprocess.run(["git", "add", *files], check=False)
     result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True)
     if result.returncode != 0:
-        subprocess.run(["git", "commit", "-m", "chore: actualizar estado turnos"], check=False)
+        subprocess.run(["git", "commit", "-m", message], check=False)
         for _ in range(3):
             push = subprocess.run(["git", "push"], capture_output=True)
             if push.returncode == 0:
@@ -151,8 +171,24 @@ def commit_state():
             subprocess.run(["git", "pull", "--rebase"], check=False)
 
 
+def commit_state():
+    from datetime import datetime, timezone
+    Path("last_run.txt").write_text(datetime.now(timezone.utc).isoformat(), encoding="utf-8")
+    git_commit_push(["last_seen.json", "last_run.txt"], "chore: actualizar estado turnos")
+
+
 def main():
     config = load_config()
+
+    if config.get("test_email"):
+        print("[monitor] Pedido de mail de prueba detectado.")
+        send_test_email(config, os.environ.get("GMAIL_APP_PASSWORD", ""))
+        config["test_email"] = False
+        save_config(config)
+        if os.environ.get("CI"):
+            git_commit_push(["config.yaml"], "chore: mail de prueba enviado")
+        return
+
     if not config.get("activo", True):
         print("[monitor] Pausado desde config.yaml, no se busca nada.")
         return

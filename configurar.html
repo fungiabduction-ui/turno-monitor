@@ -7,38 +7,50 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #333; padding: 24px; max-width: 600px; margin: 0 auto; }
-    h1 { font-size: 1.4rem; margin-bottom: 24px; color: #1a1a2e; }
-    h2 { font-size: 1rem; margin-bottom: 12px; color: #444; }
-    .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-    label { display: block; font-size: .85rem; color: #666; margin-bottom: 4px; }
-    input[type="text"], input[type="number"], input[type="password"] {
-      width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px;
-      font-size: .95rem; margin-bottom: 8px;
+    :root {
+      --bg: #0b0b0d; --card: #18181b; --border: #2c2c31;
+      --text: #e8e8ea; --text-dim: #9a9aa2; --accent: #3b9eff;
     }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text);
+           padding: 24px; padding-bottom: 60px; max-width: 600px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin-bottom: 24px; color: var(--text); }
+    h2 { font-size: 1rem; margin-bottom: 12px; color: var(--text-dim); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px; margin-bottom: 16px; }
+    label { display: block; font-size: .85rem; color: var(--text-dim); margin-bottom: 4px; }
+    input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: .95rem; margin-bottom: 8px; background: #0f0f11; color: var(--text);
+    }
+    input::placeholder { color: #55555c; }
     .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 32px; }
-    .tag { display: flex; align-items: center; gap: 4px; background: #e8f4fd; color: #1a6fa8;
+    .tag { display: flex; align-items: center; gap: 4px; background: #14283b; color: #7cc0ff;
            padding: 4px 10px; border-radius: 20px; font-size: .85rem; }
-    .tag button { background: none; border: none; cursor: pointer; color: #888; font-size: 1.1rem; line-height: 1; padding: 0 2px; }
+    .tag button { background: none; border: none; cursor: pointer; color: #7cc0ff; font-size: 1.1rem; line-height: 1; padding: 0 2px; opacity: .7; }
     .add-row { display: flex; gap: 8px; }
     .add-row input { margin-bottom: 0; flex: 1; }
-    .btn-sm { padding: 8px 14px; background: #eee; border: 1px solid #ddd; border-radius: 6px;
+    .btn-sm { padding: 8px 14px; background: #232328; color: var(--text); border: 1px solid var(--border); border-radius: 6px;
               cursor: pointer; font-size: .85rem; white-space: nowrap; }
-    .btn-sm:hover { background: #e0e0e0; }
-    .btn-primary { width: 100%; padding: 12px; background: #1a6fa8; color: white;
+    .btn-sm:hover { background: #2c2c33; }
+    .btn-primary { width: 100%; padding: 12px; background: var(--accent); color: white;
                    border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
-    .btn-primary:hover { background: #145d8e; }
-    .btn-primary:disabled { background: #aaa; cursor: not-allowed; }
+    .btn-primary:hover { background: #2a86e0; }
+    .btn-primary:disabled { background: #3a3a3f; color: var(--text-dim); cursor: not-allowed; }
     #status { margin-top: 12px; font-size: .9rem; min-height: 1.2em; padding: 4px 0; }
-    .ok { color: #2e7d32; } .err { color: #c62828; } .loading { color: #888; }
-    small { font-size: .78rem; color: #999; display: block; margin-top: -4px; margin-bottom: 8px; }
+    .ok { color: #4caf50; } .err { color: #f26666; } .loading { color: var(--text-dim); }
+    small { font-size: .78rem; color: #6b6b73; display: block; margin-top: -4px; margin-bottom: 8px; }
     .load-row { display: flex; gap: 8px; align-items: flex-end; }
     .load-row input { margin-bottom: 0; flex: 1; }
     .btn-toggle { width: 100%; padding: 16px; border: none; border-radius: 8px;
                   font-size: 1.1rem; font-weight: 600; cursor: pointer; }
-    .btn-toggle.activo { background: #2e7d32; color: white; }
-    .btn-toggle.pausado { background: #c62828; color: white; }
-    .btn-toggle:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-toggle.activo { background: #1e4620; color: #7be080; }
+    .btn-toggle.pausado { background: #4a1c1c; color: #ff8b8b; }
+    .btn-toggle:disabled { background: #232328; color: var(--text-dim); opacity: .8; cursor: not-allowed; }
+    .btn-secondary { width: 100%; padding: 12px; background: transparent; color: var(--accent);
+                     border: 1px solid var(--accent); border-radius: 6px; font-size: .95rem;
+                     cursor: pointer; margin-top: 10px; }
+    .btn-secondary:hover { background: #10233a; }
+    .btn-secondary:disabled { border-color: var(--border); color: var(--text-dim); cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -61,6 +73,7 @@
   <div class="card">
     <h2>Estado del monitor</h2>
     <button class="btn-toggle" id="toggle-activo" onclick="toggleActivo()" disabled>Cargá la config primero</button>
+    <button class="btn-secondary" id="btn-test-email" onclick="testEmail()" disabled>✉️ Probar email</button>
   </div>
 
   <div class="card">
@@ -201,11 +214,34 @@
         document.getElementById('max-notif').value = config.notificaciones?.max_por_turno_por_dia || 6;
 
         renderToggle();
+        document.getElementById('btn-test-email').disabled = false;
         ['especialidades', 'emails', 'telegram'].forEach(renderTags);
         setStatus('Config cargada.', 'ok');
       } catch (e) {
         setStatus(`Error: ${e.message}`, 'err');
       }
+    }
+
+    async function pushConfig(config, message) {
+      const { owner, repo, token } = getGhInfo();
+      const yamlStr = jsyaml.dump(config, { indent: 2 });
+      const encoded = btoa(unescape(encodeURIComponent(yamlStr)));
+      const res = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/config.yaml`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message, content: encoded, sha: currentSha }),
+        }
+      );
+      if (!res.ok) throw new Error(`${res.status} — ${await res.text()}`);
+      const data = await res.json();
+      currentSha = data.content.sha;
+      loadedConfig = config;
     }
 
     async function saveConfig() {
@@ -230,33 +266,29 @@
         telegram_chat_ids: tags.telegram,
       };
 
-      const yamlStr = jsyaml.dump(config, { indent: 2 });
-      const encoded = btoa(unescape(encodeURIComponent(yamlStr)));
-
       try {
-        const res = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/contents/config.yaml`,
-          {
-            method: 'PUT',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: 'application/vnd.github+json',
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              message: 'config: actualizar desde panel',
-              content: encoded,
-              sha: currentSha,
-            }),
-          }
-        );
-        if (!res.ok) throw new Error(`${res.status} — ${await res.text()}`);
-        const data = await res.json();
-        currentSha = data.content.sha;
-        loadedConfig = config;
+        await pushConfig(config, 'config: actualizar desde panel');
         setStatus('Configuración guardada y commiteada al repo.', 'ok');
       } catch (e) {
         setStatus(`Error al guardar: ${e.message}`, 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function testEmail() {
+      const { owner, repo, token } = getGhInfo();
+      if (!owner || !repo || !token) { setStatus('Completá usuario, repo y token.', 'err'); return; }
+      if (!currentSha || !loadedConfig) { setStatus('Primero cargá la config con "Cargar config".', 'err'); return; }
+
+      const btn = document.getElementById('btn-test-email');
+      btn.disabled = true;
+      setStatus('Pidiendo mail de prueba...', 'loading');
+      try {
+        await pushConfig({ ...loadedConfig, test_email: true }, 'chore: solicitar mail de prueba');
+        setStatus('Pedido enviado. El workflow tarda un momento en arrancar — revisá tu mail en 1-2 min.', 'ok');
+      } catch (e) {
+        setStatus(`Error: ${e.message}`, 'err');
       } finally {
         btn.disabled = false;
       }
