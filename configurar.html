@@ -51,6 +51,11 @@
                      cursor: pointer; margin-top: 10px; }
     .btn-secondary:hover { background: #10233a; }
     .btn-secondary:disabled { border-color: var(--border); color: var(--text-dim); cursor: not-allowed; }
+    .check-row { display: flex; align-items: center; gap: 10px; padding: 10px 0;
+                 border-bottom: 1px solid var(--border); cursor: pointer; }
+    .check-row:last-child { border-bottom: none; }
+    .check-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); flex-shrink: 0; }
+    .check-row span { font-size: .95rem; }
   </style>
 </head>
 <body>
@@ -78,11 +83,8 @@
 
   <div class="card">
     <h2>Especialidades a monitorear</h2>
-    <div class="tag-list" id="especialidades-list"></div>
-    <div class="add-row">
-      <input type="text" id="new-especialidad" placeholder="ej: cardiologia">
-      <button class="btn-sm" onclick="addTag('especialidades')">+ Agregar</button>
-    </div>
+    <small>Consulta médica presencial — lista real del portal DIM.</small>
+    <div id="especialidades-checks"></div>
   </div>
 
   <div class="card">
@@ -116,12 +118,49 @@
   <div id="status"></div>
 
   <script>
+    // Especialidades reales de "Consulta médica" en el portal DIM (extraidas
+    // en vivo). El value es como queda normalizado en config.yaml/monitor.py:
+    // sin tildes, minuscula. "Buscar otras consultas" abre otro flujo (texto
+    // libre) que el sistema no soporta, no se ofrece.
+    const ESPECIALIDADES_DISPONIBLES = [
+      { value: 'endocrinologia', label: 'Endocrinología' },
+      { value: 'cardiologia', label: 'Cardiología' },
+      { value: 'dermatologia', label: 'Dermatología' },
+      { value: 'andrologia e infertilidad en hombres', label: 'Andrología e Infertilidad en Hombres' },
+      { value: 'cirugia y proctologia', label: 'Cirugía y Proctología' },
+      { value: 'clinica medica', label: 'Clínica Médica' },
+    ];
+
     const tags = { especialidades: [], emails: [], telegram: [] };
-    const inputIds = { especialidades: 'new-especialidad', emails: 'new-email', telegram: 'new-telegram' };
-    const listIds = { especialidades: 'especialidades-list', emails: 'emails-list', telegram: 'telegram-list' };
+    const inputIds = { emails: 'new-email', telegram: 'new-telegram' };
+    const listIds = { emails: 'emails-list', telegram: 'telegram-list' };
     let currentSha = null;
     let loadedConfig = null; // config cruda tal cual vino de GitHub, para no pisar campos que este panel no edita (ej. filtros)
     let activo = true;
+
+    function renderEspecialidades() {
+      const container = document.getElementById('especialidades-checks');
+      container.innerHTML = '';
+      ESPECIALIDADES_DISPONIBLES.forEach(({ value, label }) => {
+        const row = document.createElement('label');
+        row.className = 'check-row';
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.checked = tags.especialidades.includes(value);
+        check.addEventListener('change', () => {
+          if (check.checked) {
+            if (!tags.especialidades.includes(value)) tags.especialidades.push(value);
+          } else {
+            tags.especialidades = tags.especialidades.filter(v => v !== value);
+          }
+        });
+        const span = document.createElement('span');
+        span.textContent = label;
+        row.appendChild(check);
+        row.appendChild(span);
+        container.appendChild(row);
+      });
+    }
 
     function renderToggle() {
       const btn = document.getElementById('toggle-activo');
@@ -215,7 +254,8 @@
 
         renderToggle();
         document.getElementById('btn-test-email').disabled = false;
-        ['especialidades', 'emails', 'telegram'].forEach(renderTags);
+        renderEspecialidades();
+        ['emails', 'telegram'].forEach(renderTags);
         setStatus('Config cargada.', 'ok');
       } catch (e) {
         setStatus(`Error: ${e.message}`, 'err');
