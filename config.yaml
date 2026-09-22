@@ -1,7 +1,6 @@
 activo: true
 especialidades:
   - endocrinologia
-  - clinica medica
 filtros:
   meses_permitidos:
     - sep
@@ -11,7 +10,6 @@ filtros:
     - lunes
   sucursales_permitidas:
     - dim rivadavia
-    - dim espora
 notificaciones:
   max_por_turno_por_dia: 1
   gmail_sender: fungiabduction@gmail.com
