@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 import unicodedata
 from pathlib import Path
 import yaml
@@ -213,6 +214,10 @@ def main():
     save_state(state)
 
     if os.environ.get("CI"):
+        # El push de commit_state() dispara la siguiente corrida (self-trigger
+        # via "on: push"), asi que esta espera fija el ritmo del ciclo en
+        # ~10 min en vez de golpear el portal de DIM sin pausa.
+        time.sleep(9 * 60)
         commit_state()
 
 
