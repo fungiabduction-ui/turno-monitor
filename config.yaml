@@ -1,8 +1,6 @@
 activo: true
-
 especialidades:
   - endocrinologia
-
 filtros:
   meses_permitidos:
     - sep
@@ -12,10 +10,10 @@ filtros:
     - lunes
   sucursales_permitidas:
     - ramos mejia
-
 notificaciones:
   max_por_turno_por_dia: 1
   gmail_sender: fungiabduction@gmail.com
   emails:
     - jonatantesta@msn.com
   telegram_chat_ids: []
+test_email: true
