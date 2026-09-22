@@ -1,6 +1,7 @@
 activo: true
 especialidades:
   - endocrinologia
+  - clinica medica
 filtros:
   meses_permitidos:
     - sep
@@ -9,7 +10,8 @@ filtros:
     - domingo
     - lunes
   sucursales_permitidas:
-    - ramos mejia
+    - dim rivadavia
+    - dim espora
 notificaciones:
   max_por_turno_por_dia: 1
   gmail_sender: fungiabduction@gmail.com
