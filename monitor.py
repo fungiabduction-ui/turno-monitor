@@ -143,7 +143,12 @@ def commit_state():
     result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True)
     if result.returncode != 0:
         subprocess.run(["git", "commit", "-m", "chore: actualizar estado turnos"], check=False)
-        subprocess.run(["git", "push"], check=False)
+        for _ in range(3):
+            push = subprocess.run(["git", "push"], capture_output=True)
+            if push.returncode == 0:
+                break
+            print("[monitor] Push rechazado, hago rebase y reintento...")
+            subprocess.run(["git", "pull", "--rebase"], check=False)
 
 
 def main():
