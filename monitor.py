@@ -148,6 +148,10 @@ def commit_state():
 
 def main():
     config = load_config()
+    if not config.get("activo", True):
+        print("[monitor] Pausado desde config.yaml, no se busca nada.")
+        return
+
     state = load_state()
     especialidades = [e.lower() for e in config.get("especialidades", [])]
     max_per_day = config["notificaciones"]["max_por_turno_por_dia"]

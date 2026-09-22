@@ -34,6 +34,11 @@
     small { font-size: .78rem; color: #999; display: block; margin-top: -4px; margin-bottom: 8px; }
     .load-row { display: flex; gap: 8px; align-items: flex-end; }
     .load-row input { margin-bottom: 0; flex: 1; }
+    .btn-toggle { width: 100%; padding: 16px; border: none; border-radius: 8px;
+                  font-size: 1.1rem; font-weight: 600; cursor: pointer; }
+    .btn-toggle.activo { background: #2e7d32; color: white; }
+    .btn-toggle.pausado { background: #c62828; color: white; }
+    .btn-toggle:disabled { opacity: .6; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -51,6 +56,11 @@
       <input type="password" id="gh-token" placeholder="ghp_...">
       <button class="btn-sm" onclick="loadConfig()">Cargar config</button>
     </div>
+  </div>
+
+  <div class="card">
+    <h2>Estado del monitor</h2>
+    <button class="btn-toggle" id="toggle-activo" onclick="toggleActivo()" disabled>Cargá la config primero</button>
   </div>
 
   <div class="card">
@@ -97,6 +107,21 @@
     const inputIds = { especialidades: 'new-especialidad', emails: 'new-email', telegram: 'new-telegram' };
     const listIds = { especialidades: 'especialidades-list', emails: 'emails-list', telegram: 'telegram-list' };
     let currentSha = null;
+    let loadedConfig = null; // config cruda tal cual vino de GitHub, para no pisar campos que este panel no edita (ej. filtros)
+    let activo = true;
+
+    function renderToggle() {
+      const btn = document.getElementById('toggle-activo');
+      btn.disabled = false;
+      btn.className = 'btn-toggle ' + (activo ? 'activo' : 'pausado');
+      btn.textContent = activo ? '🟢 Activo — tocar para pausar' : '🔴 Pausado — tocar para activar';
+    }
+
+    function toggleActivo() {
+      activo = !activo;
+      renderToggle();
+      saveConfig();
+    }
 
     window.addEventListener('load', () => {
       ['gh-token', 'gh-owner', 'gh-repo'].forEach(id => {
@@ -165,7 +190,9 @@
         const file = await res.json();
         currentSha = file.sha;
         const config = jsyaml.load(decodeURIComponent(escape(atob(file.content.replace(/\n/g, '')))));
+        loadedConfig = config;
 
+        activo = config.activo !== false;
         tags.especialidades = config.especialidades || [];
         tags.emails = config.notificaciones?.emails || [];
         tags.telegram = (config.notificaciones?.telegram_chat_ids || []).map(String);
@@ -173,6 +200,7 @@
         document.getElementById('gmail-sender').value = config.notificaciones?.gmail_sender || '';
         document.getElementById('max-notif').value = config.notificaciones?.max_por_turno_por_dia || 6;
 
+        renderToggle();
         ['especialidades', 'emails', 'telegram'].forEach(renderTags);
         setStatus('Config cargada.', 'ok');
       } catch (e) {
@@ -189,14 +217,17 @@
       btn.disabled = true;
       setStatus('Guardando...', 'loading');
 
-      const config = {
-        especialidades: tags.especialidades,
-        notificaciones: {
-          max_por_turno_por_dia: parseInt(document.getElementById('max-notif').value, 10) || 6,
-          gmail_sender: document.getElementById('gmail-sender').value.trim(),
-          emails: tags.emails,
-          telegram_chat_ids: tags.telegram,
-        }
+      // Partimos de la config cruda para no pisar campos que este panel no
+      // edita (ej. filtros de mes/dia/sucursal).
+      const config = { ...loadedConfig };
+      config.activo = activo;
+      config.especialidades = tags.especialidades;
+      config.notificaciones = {
+        ...(loadedConfig.notificaciones || {}),
+        max_por_turno_por_dia: parseInt(document.getElementById('max-notif').value, 10) || 6,
+        gmail_sender: document.getElementById('gmail-sender').value.trim(),
+        emails: tags.emails,
+        telegram_chat_ids: tags.telegram,
       };
 
       const yamlStr = jsyaml.dump(config, { indent: 2 });
@@ -222,6 +253,7 @@
         if (!res.ok) throw new Error(`${res.status} — ${await res.text()}`);
         const data = await res.json();
         currentSha = data.content.sha;
+        loadedConfig = config;
         setStatus('Configuración guardada y commiteada al repo.', 'ok');
       } catch (e) {
         setStatus(`Error al guardar: ${e.message}`, 'err');
