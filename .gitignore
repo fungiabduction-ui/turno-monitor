@@ -3,3 +3,7 @@ __pycache__/
 .env
 screenshots/
 PORTAL_NOTES.md
+debug_ss*/
+debug_screenshots.zip
+resultado.txt
+debug_*.png
